@@ -1,0 +1,35 @@
+name: Publish Norilsk Info 9.5.0
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v9.5.yml"
+      - "release-parts/v9.5/**"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble and check signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat release-parts/v9.5/part-* > Norilsk_Info_Holidays_v9_5_signed.apk
+          echo "46d07fff60f87acb637334e0febfb775c2e18948e617b9baab7e1bd8ee226ddc  Norilsk_Info_Holidays_v9_5_signed.apk" | sha256sum -c -
+          test "$(stat -c%s Norilsk_Info_Holidays_v9_5_signed.apk)" = "10517893"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v9.5.0 >/dev/null 2>&1; then
+            echo 'Release already exists; leaving it unchanged'
+          else
+            gh release create v9.5.0 Norilsk_Info_Holidays_v9_5_signed.apk \
+              --title "Norilsk Info 9.5.0 - Holidays calendar fix" \
+              --notes "Fixes missing holidays and memorable dates in the calendar; adds live calendar loading and local caching. Signed APK, versionCode 950, SHA-256: 46d07fff60f87acb637334e0febfb775c2e18948e617b9baab7e1bd8ee226ddc. Android installation confirmation required."
+          fi
